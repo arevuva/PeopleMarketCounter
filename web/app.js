@@ -7,11 +7,18 @@ const currentCountEl = document.getElementById("currentCount");
 const maxCountEl = document.getElementById("maxCount");
 const errorEl = document.getElementById("error");
 const imagePreview = document.getElementById("imagePreview");
+const videoPreview = document.getElementById("videoPreview");
+const videoPreviewContainer = document.getElementById("videoPreviewContainer");
 const fpsInput = document.getElementById("fpsInput");
 const maxSecondsInput = document.getElementById("maxSecondsInput");
 const confInput = document.getElementById("confInput");
 const tabs = document.querySelectorAll(".tab");
 const tabPanels = document.querySelectorAll(".tab-panel");
+const controlLabels = {
+  fps: document.querySelector('[data-control="fps"]'),
+  maxSeconds: document.querySelector('[data-control="max-seconds"]'),
+  conf: document.querySelector('[data-control="conf"]'),
+};
 
 let activeSocket = null;
 let activeTab = "image";
@@ -23,6 +30,13 @@ function resetStatus() {
   errorEl.textContent = "";
   imagePreview.src = "";
   imagePreview.classList.remove("visible");
+  if (videoPreview) {
+    videoPreview.removeAttribute("src");
+    videoPreview.load();
+  }
+  if (videoPreviewContainer) {
+    videoPreviewContainer.classList.remove("visible");
+  }
 }
 
 function updateButtonState() {
@@ -92,6 +106,13 @@ function startSocket(jobId) {
     }
     if (payload.type === "done") {
       maxCountEl.textContent = payload.max_count;
+      if (payload.video_url && activeTab === "video" && videoPreview) {
+        videoPreview.src = payload.video_url;
+        videoPreview.load();
+        if (videoPreviewContainer) {
+          videoPreviewContainer.classList.add("visible");
+        }
+      }
       setStatus("done");
     }
     if (payload.type === "error") {
@@ -181,6 +202,14 @@ function setActiveTab(tabName) {
   });
   imagePreview.src = "";
   imagePreview.classList.remove("visible");
+  if (videoPreview) {
+    videoPreview.removeAttribute("src");
+    videoPreview.load();
+  }
+  if (videoPreviewContainer) {
+    videoPreviewContainer.classList.remove("visible");
+  }
+  updateControlsVisibility();
   updateButtonState();
 }
 
@@ -202,3 +231,16 @@ tabs.forEach((tab) => {
 
 updateButtonState();
 setActiveTab(activeTab);
+
+function updateControlsVisibility() {
+  const showImageControls = activeTab === "image";
+  if (controlLabels.fps) {
+    controlLabels.fps.style.display = showImageControls ? "none" : "";
+  }
+  if (controlLabels.maxSeconds) {
+    controlLabels.maxSeconds.style.display = showImageControls ? "none" : "";
+  }
+  if (controlLabels.conf) {
+    controlLabels.conf.style.display = showImageControls ? "" : "none";
+  }
+}

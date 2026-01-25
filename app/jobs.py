@@ -21,6 +21,9 @@ class JobState:
     max_count: int = 0
     frames: int = 0
     error: Optional[str] = None
+    output_path: Optional[str] = None
+    output_media_type: Optional[str] = None
+    output_filename: Optional[str] = None
     created_at: float = field(default_factory=time.time)
 
 
@@ -124,6 +127,39 @@ class JobManager:
         last_emit = 0.0
         frame_index = 0
         interval = 1.0 / fps if fps > 0 else 0.0
+        writer = None
+        last_boxes = []
+        last_count = 0
+        frame_skip = 0
+
+        if is_file:
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+            source_fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
+            output_fps = source_fps if source_fps > 0 else (fps if fps > 0 else 5.0)
+            if source_fps > 0 and fps > 0:
+                frame_skip = max(1, int(round(source_fps / fps)))
+            else:
+                frame_skip = 1
+            if width > 0 and height > 0:
+                candidates = [
+                    (".mp4", "avc1", "video/mp4"),
+                    (".mp4", "H264", "video/mp4"),
+                    (".mp4", "X264", "video/mp4"),
+                    (".webm", "VP80", "video/webm"),
+                    (".mp4", "mp4v", "video/mp4"),
+                ]
+                for suffix, fourcc_tag, media_type in candidates:
+                    output_path = tempfile.NamedTemporaryFile(delete=False, suffix=suffix).name
+                    fourcc = cv2.VideoWriter_fourcc(*fourcc_tag)
+                    writer = cv2.VideoWriter(output_path, fourcc, output_fps, (width, height))
+                    if writer.isOpened():
+                        state.output_path = output_path
+                        state.output_media_type = media_type
+                        state.output_filename = f"{job_id}{suffix}"
+                        break
+                    writer.release()
+                    writer = None
 
         try:
             while True:
@@ -133,25 +169,33 @@ class JobManager:
                 if not success:
                     break
                 now = time.time()
-                if interval and (now - last_emit) < interval:
-                    continue
-                last_emit = now
                 frame_index += 1
-
-                count, _ = detector.detect_people(frame)
-                state.current_count = count
-                state.max_count = max(state.max_count, count)
                 state.frames = frame_index
 
-                payload = {
-                    "type": "frame",
-                    "frame_index": frame_index,
-                    "count": count,
-                    "max_count": state.max_count,
-                    "timestamp_ms": int(now * 1000),
-                    "done": False,
-                }
-                self._schedule_broadcast(job_id, payload)
+                if is_file:
+                    do_detect = frame_skip <= 1 or frame_index % frame_skip == 0
+                else:
+                    do_detect = interval == 0.0 or (now - last_emit) >= interval
+                if do_detect:
+                    last_emit = now
+                    last_count, last_boxes = detector.detect_people(frame)
+                    state.current_count = last_count
+                    state.max_count = max(state.max_count, last_count)
+
+                if writer:
+                    annotated = detector.draw_boxes(frame, last_boxes) if last_boxes else frame
+                    writer.write(annotated)
+
+                if do_detect:
+                    payload = {
+                        "type": "frame",
+                        "frame_index": frame_index,
+                        "count": last_count,
+                        "max_count": state.max_count,
+                        "timestamp_ms": int(now * 1000),
+                        "done": False,
+                    }
+                    self._schedule_broadcast(job_id, payload)
         except Exception as exc:
             state.status = "error"
             state.error = str(exc)
@@ -165,6 +209,8 @@ class JobManager:
             )
         finally:
             cap.release()
+            if writer:
+                writer.release()
             if is_file:
                 try:
                     os.remove(source)
@@ -178,6 +224,8 @@ class JobManager:
             "frames": state.frames,
             "done": True,
         }
+        if state.output_path:
+            done_payload["video_url"] = f"/api/job/{job_id}/video"
         self._schedule_broadcast(job_id, done_payload)
 
 

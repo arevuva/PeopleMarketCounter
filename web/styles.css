@@ -212,3 +212,20 @@ button[disabled] {
 .image-preview img.visible {
   display: inline-block;
 }
+
+.video-preview {
+  margin-top: 16px;
+  text-align: center;
+  display: none;
+}
+
+.video-preview.visible {
+  display: block;
+}
+
+.video-preview video {
+  max-width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(31, 111, 235, 0.15);
+  box-shadow: 0 12px 28px rgba(23, 46, 84, 0.12);
+}

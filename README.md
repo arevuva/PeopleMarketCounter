@@ -16,6 +16,24 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Windows setup
+
+PowerShell:
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+CMD:
+
+```bat
+python -m venv venv
+venv\Scripts\activate.bat
+pip install -r requirements.txt
+```
+
 ## Run
 
 ```bash

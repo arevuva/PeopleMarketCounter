@@ -110,8 +110,21 @@ async def get_job(job_id: str) -> JSONResponse:
             "max_count": job.max_count,
             "frames": job.frames,
             "error": job.error,
+            "video_url": f"/api/job/{job_id}/video" if job.output_path else None,
         }
     )
+
+
+@app.get("/api/job/{job_id}/video")
+async def get_job_video(job_id: str) -> FileResponse:
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status != "done" or not job.output_path:
+        raise HTTPException(status_code=404, detail="Processed video not available")
+    media_type = job.output_media_type or "video/mp4"
+    filename = job.output_filename or f"{job_id}.mp4"
+    return FileResponse(job.output_path, media_type=media_type, filename=filename)
 
 
 @app.websocket("/ws/job/{job_id}")
