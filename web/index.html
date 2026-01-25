@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>People Counter</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>People Counter</h1>
+        <p>Upload an image/video or connect to a stream to count people.</p>
+      </header>
+
+      <section class="tabs panel">
+        <div class="tab-list" role="tablist" aria-label="Detection mode">
+          <button class="tab active" role="tab" data-tab="image">Image</button>
+          <button class="tab" role="tab" data-tab="video">Video</button>
+          <button class="tab" role="tab" data-tab="stream">Stream</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-image" role="tabpanel">
+          <h2>Upload image</h2>
+          <input type="file" id="imageInput" accept="image/*" />
+        </div>
+
+        <div class="tab-panel" id="tab-video" role="tabpanel">
+          <h2>Upload video</h2>
+          <input type="file" id="videoInput" accept="video/mp4,video/avi" />
+        </div>
+
+        <div class="tab-panel" id="tab-stream" role="tabpanel">
+          <h2>Stream URL (RTSP/HTTP)</h2>
+          <input type="url" id="streamInput" placeholder="rtsp://... or http://..." />
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="controls">
+          <label>
+            FPS
+            <input type="number" id="fpsInput" min="1" max="30" value="5" />
+          </label>
+          <label>
+            Max seconds (0 = unlimited)
+            <input type="number" id="maxSecondsInput" min="0" value="0" />
+          </label>
+          <label>
+            Confidence
+            <input type="number" id="confInput" min="0" max="1" step="0.05" value="0.25" />
+          </label>
+        </div>
+        <button id="startButton" disabled>Start processing</button>
+      </section>
+
+      <section class="panel results">
+        <h2>Results</h2>
+        <div class="result-grid">
+          <div>
+            <span class="label">Current count</span>
+            <span id="currentCount">-</span>
+          </div>
+          <div>
+            <span class="label">Max count</span>
+            <span id="maxCount">-</span>
+          </div>
+          <div>
+            <span class="label">Status</span>
+            <span id="status">idle</span>
+          </div>
+        </div>
+        <pre id="error" class="error"></pre>
+        <div class="image-preview">
+          <img id="imagePreview" alt="Detected people preview" />
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
