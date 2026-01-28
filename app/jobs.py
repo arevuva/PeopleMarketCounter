@@ -10,7 +10,8 @@ from typing import Dict, Optional, Set
 import cv2
 from fastapi import WebSocket
 
-from app.detector import detector
+from app.detector import detector, encode_image_to_jpeg
+from app.history import append_history
 
 
 @dataclass
@@ -21,9 +22,14 @@ class JobState:
     max_count: int = 0
     frames: int = 0
     error: Optional[str] = None
+    source_name: Optional[str] = None
+    source_type: Optional[str] = None
+    duration_seconds: Optional[float] = None
     output_path: Optional[str] = None
     output_media_type: Optional[str] = None
     output_filename: Optional[str] = None
+    last_frame: Optional[bytes] = None
+    last_frame_id: int = 0
     created_at: float = field(default_factory=time.time)
 
 
@@ -109,10 +115,16 @@ class JobManager:
         state = self.jobs.get(job_id)
         if not state:
             return
-        cap = cv2.VideoCapture(source)
-        if not cap.isOpened():
+        cap = self._open_capture(source, is_file)
+
+        if cap is None or not cap.isOpened():
+            scheme = source.split("://")[0].lower() if "://" in source else "unknown"
             state.status = "error"
-            state.error = "Failed to open video source"
+            state.error = (
+                "Failed to open video source. "
+                f"URL scheme: {scheme}. "
+                "Check the URL/credentials and network access."
+            )
             self._schedule_broadcast(
                 job_id,
                 {
@@ -186,6 +198,13 @@ class JobManager:
                     annotated = detector.draw_boxes(frame, last_boxes) if last_boxes else frame
                     writer.write(annotated)
 
+                if not is_file:
+                    annotated = detector.draw_boxes(frame, last_boxes) if last_boxes else frame
+                    frame_bytes = encode_image_to_jpeg(annotated)
+                    if frame_bytes:
+                        state.last_frame = frame_bytes
+                        state.last_frame_id += 1
+
                 if do_detect:
                     payload = {
                         "type": "frame",
@@ -218,6 +237,15 @@ class JobManager:
                     pass
 
         state.status = "done" if state.status != "error" else state.status
+        if is_file and state.source_type == "video" and state.status == "done":
+            append_history(
+                {
+                    "type": "video",
+                    "filename": state.source_name or "video",
+                    "duration_seconds": state.duration_seconds,
+                    "count": state.max_count,
+                }
+            )
         done_payload = {
             "type": "done",
             "max_count": state.max_count,
@@ -227,6 +255,46 @@ class JobManager:
         if state.output_path:
             done_payload["video_url"] = f"/api/job/{job_id}/video"
         self._schedule_broadcast(job_id, done_payload)
+
+    def _open_capture(
+        self,
+        source: str,
+        is_file: bool,
+        open_timeout_ms: Optional[int] = None,
+        ffmpeg_timeout_us: Optional[int] = None,
+    ) -> Optional[cv2.VideoCapture]:
+        if not is_file and source.lower().startswith("rtsp://"):
+            timeout_us = ffmpeg_timeout_us if ffmpeg_timeout_us else 5000000
+            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = (
+                f"rtsp_transport;tcp|stimeout;{timeout_us}"
+            )
+        if is_file:
+            backends = [getattr(cv2, "CAP_FFMPEG", None), getattr(cv2, "CAP_ANY", None)]
+        else:
+            backends = [
+                getattr(cv2, "CAP_FFMPEG", None),
+                getattr(cv2, "CAP_GSTREAMER", None),
+                getattr(cv2, "CAP_MSMF", None),
+                getattr(cv2, "CAP_ANY", None),
+            ]
+        for backend in backends:
+            if backend is None:
+                continue
+            cap = cv2.VideoCapture(source, backend)
+            if not is_file:
+                timeout_ms = open_timeout_ms if open_timeout_ms else 5000
+                if hasattr(cv2, "CAP_PROP_OPEN_TIMEOUT_MSEC"):
+                    cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, timeout_ms)
+                if hasattr(cv2, "CAP_PROP_READ_TIMEOUT_MSEC"):
+                    cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, timeout_ms)
+            if cap.isOpened():
+                return cap
+            cap.release()
+        cap = cv2.VideoCapture(source)
+        if cap.isOpened():
+            return cap
+        cap.release()
+        return None
 
 
 job_manager = JobManager()

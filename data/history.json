@@ -1,0 +1,16 @@
+[
+  {
+    "type": "image",
+    "filename": "seq_000001.jpg",
+    "duration_seconds": null,
+    "count": 20,
+    "timestamp": "2026-01-29 00:17:25"
+  },
+  {
+    "type": "video",
+    "filename": "EC.webm",
+    "duration_seconds": 17.5,
+    "count": 14,
+    "timestamp": "2026-01-29 00:18:03"
+  }
+]

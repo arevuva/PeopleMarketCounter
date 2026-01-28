@@ -1,3 +1,4 @@
+﻿console.log("People Counter app.js loaded");
 const imageInput = document.getElementById("imageInput");
 const videoInput = document.getElementById("videoInput");
 const streamInput = document.getElementById("streamInput");
@@ -9,6 +10,8 @@ const errorEl = document.getElementById("error");
 const imagePreview = document.getElementById("imagePreview");
 const videoPreview = document.getElementById("videoPreview");
 const videoPreviewContainer = document.getElementById("videoPreviewContainer");
+const streamPreview = document.getElementById("streamPreview");
+const historyList = document.getElementById("historyList");
 const fpsInput = document.getElementById("fpsInput");
 const maxSecondsInput = document.getElementById("maxSecondsInput");
 const confInput = document.getElementById("confInput");
@@ -19,12 +22,20 @@ const controlLabels = {
   maxSeconds: document.querySelector('[data-control="max-seconds"]'),
   conf: document.querySelector('[data-control="conf"]'),
 };
+const controlsPanel = document.getElementById("controlsPanel");
+const resultsPanel = document.getElementById("resultsPanel");
 
 let activeSocket = null;
 let activeTab = "image";
+const statusLabels = {
+  idle: "ожидание",
+  processing: "обработка",
+  done: "готово",
+  error: "ошибка",
+};
 
 function resetStatus() {
-  statusEl.textContent = "idle";
+  statusEl.textContent = statusLabels.idle;
   currentCountEl.textContent = "-";
   maxCountEl.textContent = "-";
   errorEl.textContent = "";
@@ -36,6 +47,9 @@ function resetStatus() {
   }
   if (videoPreviewContainer) {
     videoPreviewContainer.classList.remove("visible");
+  }
+  if (streamPreview) {
+    streamPreview.removeAttribute("src");
   }
 }
 
@@ -53,7 +67,7 @@ function updateButtonState() {
 }
 
 function setStatus(status) {
-  statusEl.textContent = status;
+  statusEl.textContent = statusLabels[status] || status;
 }
 
 function closeSocket() {
@@ -61,6 +75,13 @@ function closeSocket() {
     activeSocket.close();
     activeSocket = null;
   }
+}
+
+function setStreamPreview(jobId) {
+  if (!streamPreview) {
+    return;
+  }
+  streamPreview.src = `/api/job/${jobId}/mjpeg?ts=${Date.now()}`;
 }
 
 async function processImage(file) {
@@ -86,7 +107,7 @@ async function processImage(file) {
     setStatus("done");
   } catch (error) {
     setStatus("error");
-    errorEl.textContent = error.message || "Failed to process image";
+    errorEl.textContent = error.message || "Не удалось обработать изображение";
   }
 }
 
@@ -117,13 +138,13 @@ function startSocket(jobId) {
     }
     if (payload.type === "error") {
       setStatus("error");
-      errorEl.textContent = payload.message || "Processing error";
+      errorEl.textContent = payload.message || "Ошибка обработки";
     }
   };
 
   socket.onerror = () => {
     setStatus("error");
-    errorEl.textContent = "WebSocket error";
+    errorEl.textContent = "Ошибка WebSocket";
   };
 }
 
@@ -145,12 +166,13 @@ async function processVideo(file) {
     startSocket(result.job_id);
   } catch (error) {
     setStatus("error");
-    errorEl.textContent = error.message || "Failed to process video";
+    errorEl.textContent = error.message || "Не удалось обработать видео";
   }
 }
 
 async function processStream(url) {
   setStatus("processing");
+  const streamWindow = window.open("", "_blank");
   try {
     const response = await fetch("/api/process/stream", {
       method: "POST",
@@ -166,9 +188,16 @@ async function processStream(url) {
     }
     const result = await response.json();
     startSocket(result.job_id);
+    setStreamPreview(result.job_id);
+    if (streamWindow) {
+      streamWindow.location = `/api/job/${result.job_id}/mjpeg`;
+    }
   } catch (error) {
     setStatus("error");
-    errorEl.textContent = error.message || "Failed to process stream";
+    errorEl.textContent = error.message || "Не удалось обработать поток";
+    if (streamWindow) {
+      streamWindow.close();
+    }
   }
 }
 
@@ -209,8 +238,19 @@ function setActiveTab(tabName) {
   if (videoPreviewContainer) {
     videoPreviewContainer.classList.remove("visible");
   }
+
   updateControlsVisibility();
   updateButtonState();
+  if (activeTab === "history") {
+    loadHistory();
+  }
+  const showProcessingPanels = activeTab !== "history";
+  if (controlsPanel) {
+    controlsPanel.style.display = showProcessingPanels ? "" : "none";
+  }
+  if (resultsPanel) {
+    resultsPanel.style.display = showProcessingPanels ? "" : "none";
+  }
 }
 
 tabs.forEach((tab) => {
@@ -235,12 +275,56 @@ setActiveTab(activeTab);
 function updateControlsVisibility() {
   const showImageControls = activeTab === "image";
   if (controlLabels.fps) {
-    controlLabels.fps.style.display = showImageControls ? "none" : "";
+    controlLabels.fps.style.display = activeTab === "video" || activeTab === "stream" ? "none" : "";
   }
   if (controlLabels.maxSeconds) {
-    controlLabels.maxSeconds.style.display = showImageControls ? "none" : "";
+    controlLabels.maxSeconds.style.display =
+      activeTab === "video" || activeTab === "stream" ? "none" : "";
   }
   if (controlLabels.conf) {
     controlLabels.conf.style.display = showImageControls ? "" : "none";
+  }
+}
+
+async function loadHistory() {
+  if (!historyList) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/history");
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+    const items = await response.json();
+    if (!items || items.length === 0) {
+      historyList.textContent = "Нет данных";
+      return;
+    }
+    historyList.innerHTML = "";
+    items
+      .slice()
+      .reverse()
+      .forEach((item) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "history-item";
+        const filename = item.filename || "—";
+        const duration =
+          item.duration_seconds !== null && item.duration_seconds !== undefined
+            ? `${item.duration_seconds} сек`
+            : "—";
+        const count =
+          item.count !== null && item.count !== undefined ? item.count : "—";
+        const timestamp = item.timestamp || "—";
+        wrapper.innerHTML = `
+          <span><strong>Тип:</strong> ${item.type || "—"}</span>
+          <span><strong>Файл:</strong> ${filename}</span>
+          <span><strong>Длительность:</strong> ${duration}</span>
+          <span><strong>Количество людей:</strong> ${count}</span>
+          <span><strong>Время:</strong> ${timestamp}</span>
+        `;
+        historyList.appendChild(wrapper);
+      });
+  } catch (error) {
+    historyList.textContent = "Не удалось загрузить историю";
   }
 }

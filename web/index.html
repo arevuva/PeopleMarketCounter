@@ -1,85 +1,94 @@
-<!DOCTYPE html>
-<html lang="en">
+﻿<!DOCTYPE html>
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>People Counter</title>
+    <title>Счётчик людей</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <main class="container">
       <header>
-        <h1>People Counter</h1>
-        <p>Upload an image/video or connect to a stream to count people.</p>
+        <h1>Счётчик людей</h1>
+        <p>Загрузите изображение или видео, либо подключите поток для подсчёта людей.</p>
       </header>
 
       <section class="tabs panel">
-        <div class="tab-list" role="tablist" aria-label="Detection mode">
-          <button class="tab active" role="tab" data-tab="image">Image</button>
-          <button class="tab" role="tab" data-tab="video">Video</button>
-          <button class="tab" role="tab" data-tab="stream">Stream</button>
+        <div class="tab-list" role="tablist" aria-label="Режим распознавания">
+          <button class="tab active" role="tab" data-tab="image">Изображение</button>
+          <button class="tab" role="tab" data-tab="video">Видео</button>
+          <button class="tab" role="tab" data-tab="stream">Поток</button>
+          <button class="tab" role="tab" data-tab="history">История</button>
         </div>
 
         <div class="tab-panel active" id="tab-image" role="tabpanel">
-          <h2>Upload image</h2>
+          <h2>Загрузка изображения</h2>
           <input type="file" id="imageInput" accept="image/*" />
         </div>
 
         <div class="tab-panel" id="tab-video" role="tabpanel">
-          <h2>Upload video</h2>
+          <h2>Загрузка видео</h2>
           <input type="file" id="videoInput" accept="video/mp4,video/avi,video/webm" />
         </div>
 
         <div class="tab-panel" id="tab-stream" role="tabpanel">
-          <h2>Stream URL (RTSP/HTTP)</h2>
-          <input type="url" id="streamInput" placeholder="rtsp://... or http://..." />
+          <h2>Ссылка на поток (RTSP/HTTP)</h2>
+          <input type="url" id="streamInput" placeholder="rtsp://... или http://..." />
+        </div>
+
+        <div class="tab-panel" id="tab-history" role="tabpanel">
+          <h2>История запросов</h2>
+          <div id="historyList" class="history-list">Нет данных</div>
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel" id="controlsPanel">
         <div class="controls">
           <label data-control="fps">
             FPS
             <input type="number" id="fpsInput" min="1" max="30" value="5" />
           </label>
           <label data-control="max-seconds">
-            Max seconds (0 = unlimited)
+            Макс. секунд (0 = без лимита)
             <input type="number" id="maxSecondsInput" min="0" value="0" />
           </label>
           <label data-control="conf">
-            Confidence
+            Точность
             <input type="number" id="confInput" min="0" max="1" step="0.05" value="0.25" />
           </label>
         </div>
-        <button id="startButton" disabled>Start processing</button>
+        <button id="startButton" disabled>Запустить обработку</button>
       </section>
 
-      <section class="panel results">
-        <h2>Results</h2>
+      <section class="panel results" id="resultsPanel">
+        <h2>Результаты</h2>
         <div class="result-grid">
           <div>
-            <span class="label">Current count</span>
+            <span class="label">Текущее количество</span>
             <span id="currentCount">-</span>
           </div>
           <div>
-            <span class="label">Max count</span>
+            <span class="label">Максимум</span>
             <span id="maxCount">-</span>
           </div>
           <div>
-            <span class="label">Status</span>
-            <span id="status">idle</span>
+            <span class="label">Статус</span>
+            <span id="status">ожидание</span>
           </div>
         </div>
         <pre id="error" class="error"></pre>
         <div class="image-preview">
-          <img id="imagePreview" alt="Detected people preview" />
+          <img id="imagePreview" alt="Предпросмотр обнаруженных людей" />
         </div>
         <div class="video-preview" id="videoPreviewContainer">
           <video id="videoPreview" controls playsinline preload="metadata"></video>
         </div>
+        <div class="stream-preview" id="streamPreviewContainer">
+          <img id="streamPreview" alt="Поток с метками объектов" />
+        </div>
       </section>
     </main>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=1" defer onerror="console.error('app.js load failed')"></script>
   </body>
 </html>
