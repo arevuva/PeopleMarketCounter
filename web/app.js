@@ -3,15 +3,8 @@ const imageInput = document.getElementById("imageInput");
 const videoInput = document.getElementById("videoInput");
 const streamInput = document.getElementById("streamInput");
 const startButton = document.getElementById("startButton");
-const statusEl = document.getElementById("status");
-const currentCountEl = document.getElementById("currentCount");
-const maxCountEl = document.getElementById("maxCount");
-const errorEl = document.getElementById("error");
-const imagePreview = document.getElementById("imagePreview");
-const videoPreview = document.getElementById("videoPreview");
-const videoPreviewContainer = document.getElementById("videoPreviewContainer");
-const streamPreview = document.getElementById("streamPreview");
 const historyList = document.getElementById("historyList");
+const historyEmpty = document.getElementById("historyEmpty");
 const fpsInput = document.getElementById("fpsInput");
 const maxSecondsInput = document.getElementById("maxSecondsInput");
 const confInput = document.getElementById("confInput");
@@ -23,7 +16,6 @@ const controlLabels = {
   conf: document.querySelector('[data-control="conf"]'),
 };
 const controlsPanel = document.getElementById("controlsPanel");
-const resultsPanel = document.getElementById("resultsPanel");
 
 let activeSocket = null;
 let activeTab = "image";
@@ -34,23 +26,71 @@ const statusLabels = {
   error: "ошибка",
 };
 
+function getResultsContainer(tabName) {
+  const tabPanel = document.getElementById(`tab-${tabName}`);
+  if (!tabPanel) {
+    return null;
+  }
+  return tabPanel.querySelector(".results-panel");
+}
+
+function getResultEls(tabName) {
+  const container = getResultsContainer(tabName);
+  if (!container) {
+    return null;
+  }
+  return {
+    container,
+    currentCountEl: container.querySelector('[data-field="currentCount"]'),
+    maxCountEl: container.querySelector('[data-field="maxCount"]'),
+    statusEl: container.querySelector('[data-field="status"]'),
+    errorEl: container.querySelector('[data-field="error"]'),
+    imagePreview: container.querySelector('[data-field="imagePreview"]'),
+    videoPreview: container.querySelector('[data-field="videoPreview"]'),
+    streamPreview: container.querySelector('[data-field="streamPreview"]'),
+  };
+}
+
+function resetStatusFor(tabName) {
+  const els = getResultEls(tabName);
+  if (!els) {
+    return;
+  }
+  if (els.statusEl) {
+    els.statusEl.textContent = statusLabels.idle;
+  }
+  if (els.currentCountEl) {
+    els.currentCountEl.textContent = "-";
+  }
+  if (els.maxCountEl) {
+    els.maxCountEl.textContent = "-";
+  }
+  if (els.errorEl) {
+    els.errorEl.textContent = "";
+  }
+  if (els.imagePreview) {
+    els.imagePreview.src = "";
+    els.imagePreview.classList.remove("visible");
+  }
+  if (els.videoPreview) {
+    els.videoPreview.removeAttribute("src");
+    els.videoPreview.load();
+    const wrapper = els.videoPreview.closest(".video-preview");
+    if (wrapper) {
+      wrapper.classList.remove("visible");
+    }
+  }
+  if (els.streamPreview) {
+    els.streamPreview.removeAttribute("src");
+    const wrapper = els.streamPreview.closest(".stream-preview");
+    if (wrapper) {
+      wrapper.classList.remove("visible");
+    }
+  }
+}
+
 function resetStatus() {
-  statusEl.textContent = statusLabels.idle;
-  currentCountEl.textContent = "-";
-  maxCountEl.textContent = "-";
-  errorEl.textContent = "";
-  imagePreview.src = "";
-  imagePreview.classList.remove("visible");
-  if (videoPreview) {
-    videoPreview.removeAttribute("src");
-    videoPreview.load();
-  }
-  if (videoPreviewContainer) {
-    videoPreviewContainer.classList.remove("visible");
-  }
-  if (streamPreview) {
-    streamPreview.removeAttribute("src");
-  }
+  resetStatusFor(activeTab);
 }
 
 function updateButtonState() {
@@ -61,13 +101,19 @@ function updateButtonState() {
     startButton.disabled = !hasImage;
   } else if (activeTab === "video") {
     startButton.disabled = !hasVideo;
-  } else {
+  } else if (activeTab === "stream") {
     startButton.disabled = !hasStream;
+  } else {
+    startButton.disabled = true;
   }
 }
 
-function setStatus(status) {
-  statusEl.textContent = statusLabels[status] || status;
+function setStatus(status, tabName = activeTab) {
+  const els = getResultEls(tabName);
+  if (!els || !els.statusEl) {
+    return;
+  }
+  els.statusEl.textContent = statusLabels[status] || status;
 }
 
 function closeSocket() {
@@ -77,18 +123,24 @@ function closeSocket() {
   }
 }
 
-function setStreamPreview(jobId) {
-  if (!streamPreview) {
+function setStreamPreview(jobId, tabName) {
+  const els = getResultEls(tabName);
+  if (!els || !els.streamPreview) {
     return;
   }
-  streamPreview.src = `/api/job/${jobId}/mjpeg?ts=${Date.now()}`;
+  els.streamPreview.src = `/api/job/${jobId}/mjpeg?ts=${Date.now()}`;
+  const wrapper = els.streamPreview.closest(".stream-preview");
+  if (wrapper) {
+    wrapper.classList.add("visible");
+  }
 }
 
 async function processImage(file) {
-  setStatus("processing");
+  setStatus("processing", "image");
   const formData = new FormData();
   formData.append("image", file);
   const conf = parseFloat(confInput.value || "0.25");
+  const els = getResultEls("image");
   try {
     const response = await fetch(`/api/process/image?conf=${conf}`, {
       method: "POST",
@@ -98,20 +150,26 @@ async function processImage(file) {
       throw new Error(await response.text());
     }
     const result = await response.json();
-    currentCountEl.textContent = result.count;
-    maxCountEl.textContent = result.count;
-    if (result.image_b64) {
-      imagePreview.src = `data:image/jpeg;base64,${result.image_b64}`;
-      imagePreview.classList.add("visible");
+    if (els?.currentCountEl) {
+      els.currentCountEl.textContent = result.count;
     }
-    setStatus("done");
+    if (els?.maxCountEl) {
+      els.maxCountEl.textContent = result.count;
+    }
+    if (result.image_b64 && els?.imagePreview) {
+      els.imagePreview.src = `data:image/jpeg;base64,${result.image_b64}`;
+      els.imagePreview.classList.add("visible");
+    }
+    setStatus("done", "image");
   } catch (error) {
-    setStatus("error");
-    errorEl.textContent = error.message || "Не удалось обработать изображение";
+    setStatus("error", "image");
+    if (els?.errorEl) {
+      els.errorEl.textContent = error.message || "Не удалось обработать изображение";
+    }
   }
 }
 
-function startSocket(jobId) {
+function startSocket(jobId, tabName) {
   closeSocket();
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   const wsUrl = `${protocol}://${window.location.host}/ws/job/${jobId}`;
@@ -120,40 +178,57 @@ function startSocket(jobId) {
 
   socket.onmessage = (event) => {
     const payload = JSON.parse(event.data);
+    const els = getResultEls(tabName);
+    if (!els) {
+      return;
+    }
     if (payload.type === "frame") {
-      currentCountEl.textContent = payload.count;
-      maxCountEl.textContent = payload.max_count;
-      setStatus("processing");
+      if (els.currentCountEl) {
+        els.currentCountEl.textContent = payload.count;
+      }
+      if (els.maxCountEl) {
+        els.maxCountEl.textContent = payload.max_count;
+      }
+      setStatus("processing", tabName);
     }
     if (payload.type === "done") {
-      maxCountEl.textContent = payload.max_count;
-      if (payload.video_url && activeTab === "video" && videoPreview) {
-        videoPreview.src = payload.video_url;
-        videoPreview.load();
-        if (videoPreviewContainer) {
-          videoPreviewContainer.classList.add("visible");
+      if (els.maxCountEl) {
+        els.maxCountEl.textContent = payload.max_count;
+      }
+      if (payload.video_url && tabName === "video" && els.videoPreview) {
+        els.videoPreview.src = payload.video_url;
+        els.videoPreview.load();
+        const wrapper = els.videoPreview.closest(".video-preview");
+        if (wrapper) {
+          wrapper.classList.add("visible");
         }
       }
-      setStatus("done");
+      setStatus("done", tabName);
     }
     if (payload.type === "error") {
-      setStatus("error");
-      errorEl.textContent = payload.message || "Ошибка обработки";
+      setStatus("error", tabName);
+      if (els.errorEl) {
+        els.errorEl.textContent = payload.message || "Ошибка обработки";
+      }
     }
   };
 
   socket.onerror = () => {
-    setStatus("error");
-    errorEl.textContent = "Ошибка WebSocket";
+    const els = getResultEls(tabName);
+    setStatus("error", tabName);
+    if (els?.errorEl) {
+      els.errorEl.textContent = "Ошибка WebSocket";
+    }
   };
 }
 
 async function processVideo(file) {
-  setStatus("processing");
+  setStatus("processing", "video");
   const formData = new FormData();
   formData.append("video", file);
   formData.append("fps", fpsInput.value || "5");
   formData.append("max_seconds", maxSecondsInput.value || "0");
+  const els = getResultEls("video");
   try {
     const response = await fetch("/api/process/video", {
       method: "POST",
@@ -163,16 +238,20 @@ async function processVideo(file) {
       throw new Error(await response.text());
     }
     const result = await response.json();
-    startSocket(result.job_id);
+    startSocket(result.job_id, "video");
+    setStreamPreview(result.job_id, "video");
   } catch (error) {
-    setStatus("error");
-    errorEl.textContent = error.message || "Не удалось обработать видео";
+    setStatus("error", "video");
+    if (els?.errorEl) {
+      els.errorEl.textContent = error.message || "Не удалось обработать видео";
+    }
   }
 }
 
 async function processStream(url) {
-  setStatus("processing");
+  setStatus("processing", "stream");
   const streamWindow = window.open("", "_blank");
+  const els = getResultEls("stream");
   try {
     const response = await fetch("/api/process/stream", {
       method: "POST",
@@ -187,14 +266,16 @@ async function processStream(url) {
       throw new Error(await response.text());
     }
     const result = await response.json();
-    startSocket(result.job_id);
-    setStreamPreview(result.job_id);
+    startSocket(result.job_id, "stream");
+    setStreamPreview(result.job_id, "stream");
     if (streamWindow) {
       streamWindow.location = `/api/job/${result.job_id}/mjpeg`;
     }
   } catch (error) {
-    setStatus("error");
-    errorEl.textContent = error.message || "Не удалось обработать поток";
+    setStatus("error", "stream");
+    if (els?.errorEl) {
+      els.errorEl.textContent = error.message || "Не удалось обработать поток";
+    }
     if (streamWindow) {
       streamWindow.close();
     }
@@ -229,32 +310,21 @@ function setActiveTab(tabName) {
   tabPanels.forEach((panel) => {
     panel.classList.toggle("active", panel.id === `tab-${tabName}`);
   });
-  imagePreview.src = "";
-  imagePreview.classList.remove("visible");
-  if (videoPreview) {
-    videoPreview.removeAttribute("src");
-    videoPreview.load();
-  }
-  if (videoPreviewContainer) {
-    videoPreviewContainer.classList.remove("visible");
-  }
-
   updateControlsVisibility();
   updateButtonState();
   if (activeTab === "history") {
     loadHistory();
   }
-  const showProcessingPanels = activeTab !== "history";
   if (controlsPanel) {
-    controlsPanel.style.display = showProcessingPanels ? "" : "none";
-  }
-  if (resultsPanel) {
-    resultsPanel.style.display = showProcessingPanels ? "" : "none";
+    controlsPanel.style.display = activeTab === "history" ? "none" : "";
   }
 }
 
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
+    if (tab.disabled || tab.classList.contains("disabled")) {
+      return;
+    }
     setActiveTab(tab.dataset.tab);
   });
 });
@@ -275,11 +345,10 @@ setActiveTab(activeTab);
 function updateControlsVisibility() {
   const showImageControls = activeTab === "image";
   if (controlLabels.fps) {
-    controlLabels.fps.style.display = activeTab === "video" || activeTab === "stream" ? "none" : "";
+    controlLabels.fps.style.display = "none";
   }
   if (controlLabels.maxSeconds) {
-    controlLabels.maxSeconds.style.display =
-      activeTab === "video" || activeTab === "stream" ? "none" : "";
+    controlLabels.maxSeconds.style.display = "none";
   }
   if (controlLabels.conf) {
     controlLabels.conf.style.display = showImageControls ? "" : "none";
@@ -297,16 +366,20 @@ async function loadHistory() {
     }
     const items = await response.json();
     if (!items || items.length === 0) {
-      historyList.textContent = "Нет данных";
+      historyList.innerHTML = "";
+      if (historyEmpty) {
+        historyEmpty.style.display = "block";
+      }
       return;
     }
     historyList.innerHTML = "";
+    if (historyEmpty) {
+      historyEmpty.style.display = "none";
+    }
     items
       .slice()
       .reverse()
       .forEach((item) => {
-        const wrapper = document.createElement("div");
-        wrapper.className = "history-item";
         const filename = item.filename || "—";
         const duration =
           item.duration_seconds !== null && item.duration_seconds !== undefined
@@ -315,16 +388,21 @@ async function loadHistory() {
         const count =
           item.count !== null && item.count !== undefined ? item.count : "—";
         const timestamp = item.timestamp || "—";
-        wrapper.innerHTML = `
-          <span><strong>Тип:</strong> ${item.type || "—"}</span>
-          <span><strong>Файл:</strong> ${filename}</span>
-          <span><strong>Длительность:</strong> ${duration}</span>
-          <span><strong>Количество людей:</strong> ${count}</span>
-          <span><strong>Время:</strong> ${timestamp}</span>
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${item.type || "—"}</td>
+          <td>${filename}</td>
+          <td>${duration}</td>
+          <td>${count}</td>
+          <td>${timestamp}</td>
         `;
-        historyList.appendChild(wrapper);
+        historyList.appendChild(row);
       });
   } catch (error) {
-    historyList.textContent = "Не удалось загрузить историю";
+    historyList.innerHTML = "";
+    if (historyEmpty) {
+      historyEmpty.textContent = "Не удалось загрузить историю";
+      historyEmpty.style.display = "block";
+    }
   }
 }

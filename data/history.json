@@ -12,5 +12,75 @@
     "duration_seconds": 17.5,
     "count": 14,
     "timestamp": "2026-01-29 00:18:03"
+  },
+  {
+    "type": "image",
+    "filename": "seq_000003.jpg",
+    "duration_seconds": null,
+    "count": 21,
+    "timestamp": "2026-01-29 00:32:48"
+  },
+  {
+    "type": "video",
+    "filename": "clothes.MP4",
+    "duration_seconds": 10.52,
+    "count": 12,
+    "timestamp": "2026-01-29 00:35:02"
+  },
+  {
+    "type": "video",
+    "filename": "EC.webm",
+    "duration_seconds": 17.5,
+    "count": 14,
+    "timestamp": "2026-01-29 00:37:53"
+  },
+  {
+    "type": "video",
+    "filename": "clothes.MP4",
+    "duration_seconds": 10.52,
+    "count": 12,
+    "timestamp": "2026-01-29 00:38:22"
+  },
+  {
+    "type": "video",
+    "filename": "openSpace.webm",
+    "duration_seconds": 14.5,
+    "count": 9,
+    "timestamp": "2026-01-29 00:38:53"
+  },
+  {
+    "type": "video",
+    "filename": "EC.webm",
+    "duration_seconds": 17.5,
+    "count": 14,
+    "timestamp": "2026-01-29 00:52:04"
+  },
+  {
+    "type": "image",
+    "filename": "seq_000001.jpg",
+    "duration_seconds": null,
+    "count": 20,
+    "timestamp": "2026-01-29 00:52:20"
+  },
+  {
+    "type": "video",
+    "filename": "EC.webm",
+    "duration_seconds": 17.5,
+    "count": 14,
+    "timestamp": "2026-01-29 00:57:57"
+  },
+  {
+    "type": "image",
+    "filename": "seq_000001.jpg",
+    "duration_seconds": null,
+    "count": 20,
+    "timestamp": "2026-01-29 01:12:47"
+  },
+  {
+    "type": "video",
+    "filename": "clothes.MP4",
+    "duration_seconds": 10.52,
+    "count": 12,
+    "timestamp": "2026-01-29 01:13:48"
   }
 ]

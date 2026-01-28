@@ -83,6 +83,13 @@ header p {
   margin: 0;
 }
 
+.tab.disabled {
+  color: #9aa3b2;
+  background: transparent;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .tab.active {
   background: #7c3aed;
   color: #fff;
@@ -171,6 +178,10 @@ button[disabled] {
   gap: 16px;
 }
 
+.results-panel {
+  margin-top: 16px;
+}
+
 .results .result-grid div {
   padding: 12px 14px;
   background: #f7f5ff;
@@ -252,7 +263,7 @@ button[disabled] {
 
 .stream-preview img {
   display: block;
-  width: 100%;
+  width: min(100%, 560px);
   max-width: 100%;
   height: auto;
   border-radius: 12px;
@@ -262,22 +273,47 @@ button[disabled] {
 }
 
 
-.history-list {
-  display: grid;
-  gap: 12px;
-}
-
-.history-item {
+.history-empty {
   padding: 12px 14px;
+  color: #5c5870;
   background: #f7f5ff;
   border-radius: 10px;
   border: 1px solid rgba(124, 58, 237, 0.12);
-  display: grid;
-  gap: 6px;
-  font-size: 0.9rem;
 }
 
-.history-item span {
-  display: block;
-  color: #3a3750;
+.history-table {
+  margin-top: 12px;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  background: #ffffff;
+  box-shadow: 0 10px 20px rgba(124, 58, 237, 0.08);
+}
+
+.history-table table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.history-table thead {
+  background: linear-gradient(120deg, rgba(124, 58, 237, 0.12), rgba(168, 85, 247, 0.08));
+}
+
+.history-table th,
+.history-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(124, 58, 237, 0.12);
+  font-size: 0.9rem;
+  color: #2f2d3f;
+}
+
+.history-table th {
+  font-weight: 700;
+  color: #4a2aa5;
+}
+
+.history-table tbody tr:nth-child(even) {
+  background: #faf8ff;
 }

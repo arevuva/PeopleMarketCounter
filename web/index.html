@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Счётчик людей</title>
+    <title>Подсчет посетителей в магазине</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <main class="container">
       <header>
-        <h1>Счётчик людей</h1>
+        <h1>Подсчет посетителей в магазине</h1>
         <p>Загрузите изображение или видео, либо подключите поток для подсчёта людей.</p>
       </header>
 
@@ -17,28 +17,106 @@
         <div class="tab-list" role="tablist" aria-label="Режим распознавания">
           <button class="tab active" role="tab" data-tab="image">Изображение</button>
           <button class="tab" role="tab" data-tab="video">Видео</button>
-          <button class="tab" role="tab" data-tab="stream">Поток</button>
+          <button class="tab disabled" role="tab" data-tab="stream" disabled aria-disabled="true">
+            Поток
+          </button>
           <button class="tab" role="tab" data-tab="history">История</button>
         </div>
 
         <div class="tab-panel active" id="tab-image" role="tabpanel">
           <h2>Загрузка изображения</h2>
           <input type="file" id="imageInput" accept="image/*" />
+          <section class="panel results results-panel">
+            <h2>Результаты</h2>
+            <div class="result-grid">
+              <div>
+                <span class="label">Количество</span>
+                <span data-field="currentCount">-</span>
+              </div>
+              <div>
+                <span class="label">Статус</span>
+                <span data-field="status">ожидание</span>
+              </div>
+            </div>
+            <pre data-field="error" class="error"></pre>
+            <div class="image-preview">
+              <img data-field="imagePreview" alt="Предпросмотр обнаруженных людей" />
+            </div>
+          </section>
         </div>
 
         <div class="tab-panel" id="tab-video" role="tabpanel">
           <h2>Загрузка видео</h2>
           <input type="file" id="videoInput" accept="video/mp4,video/avi,video/webm" />
+          <section class="panel results results-panel">
+            <h2>Результаты</h2>
+            <div class="result-grid">
+              <div>
+                <span class="label">Текущее количество</span>
+                <span data-field="currentCount">-</span>
+              </div>
+              <div>
+                <span class="label">Максимум</span>
+                <span data-field="maxCount">-</span>
+              </div>
+              <div>
+                <span class="label">Статус</span>
+                <span data-field="status">ожидание</span>
+              </div>
+            </div>
+            <pre data-field="error" class="error"></pre>
+            <div class="video-preview">
+              <video data-field="videoPreview" controls playsinline preload="metadata"></video>
+            </div>
+            <div class="stream-preview">
+              <img data-field="streamPreview" alt="Поток с метками объектов" />
+            </div>
+          </section>
         </div>
 
         <div class="tab-panel" id="tab-stream" role="tabpanel">
           <h2>Ссылка на поток (RTSP/HTTP)</h2>
           <input type="url" id="streamInput" placeholder="rtsp://... или http://..." />
+          <section class="panel results results-panel">
+            <h2>Результаты</h2>
+            <div class="result-grid">
+              <div>
+                <span class="label">Текущее количество</span>
+                <span data-field="currentCount">-</span>
+              </div>
+              <div>
+                <span class="label">Максимум</span>
+                <span data-field="maxCount">-</span>
+              </div>
+              <div>
+                <span class="label">Статус</span>
+                <span data-field="status">ожидание</span>
+              </div>
+            </div>
+            <pre data-field="error" class="error"></pre>
+            <div class="stream-preview">
+              <img data-field="streamPreview" alt="Поток с метками объектов" />
+            </div>
+          </section>
         </div>
 
         <div class="tab-panel" id="tab-history" role="tabpanel">
           <h2>История запросов</h2>
-          <div id="historyList" class="history-list">Нет данных</div>
+          <div id="historyEmpty" class="history-empty">Нет данных</div>
+          <div class="history-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Тип</th>
+                  <th>Файл</th>
+                  <th>Длительность</th>
+                  <th>Количество людей</th>
+                  <th>Время</th>
+                </tr>
+              </thead>
+              <tbody id="historyList"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -60,33 +138,6 @@
         <button id="startButton" disabled>Запустить обработку</button>
       </section>
 
-      <section class="panel results" id="resultsPanel">
-        <h2>Результаты</h2>
-        <div class="result-grid">
-          <div>
-            <span class="label">Текущее количество</span>
-            <span id="currentCount">-</span>
-          </div>
-          <div>
-            <span class="label">Максимум</span>
-            <span id="maxCount">-</span>
-          </div>
-          <div>
-            <span class="label">Статус</span>
-            <span id="status">ожидание</span>
-          </div>
-        </div>
-        <pre id="error" class="error"></pre>
-        <div class="image-preview">
-          <img id="imagePreview" alt="Предпросмотр обнаруженных людей" />
-        </div>
-        <div class="video-preview" id="videoPreviewContainer">
-          <video id="videoPreview" controls playsinline preload="metadata"></video>
-        </div>
-        <div class="stream-preview" id="streamPreviewContainer">
-          <img id="streamPreview" alt="Поток с метками объектов" />
-        </div>
-      </section>
     </main>
 
     <script src="/static/app.js?v=1" defer onerror="console.error('app.js load failed')"></script>

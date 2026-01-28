@@ -143,12 +143,15 @@ class JobManager:
         last_boxes = []
         last_count = 0
         frame_skip = 0
+        frame_duration = 0.0
 
         if is_file:
             width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
             source_fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
             output_fps = source_fps if source_fps > 0 else (fps if fps > 0 else 5.0)
+            if source_fps > 0:
+                frame_duration = 1.0 / source_fps
             if source_fps > 0 and fps > 0:
                 frame_skip = max(1, int(round(source_fps / fps)))
             else:
@@ -194,16 +197,14 @@ class JobManager:
                     state.current_count = last_count
                     state.max_count = max(state.max_count, last_count)
 
+                annotated = detector.draw_boxes(frame, last_boxes) if last_boxes else frame
                 if writer:
-                    annotated = detector.draw_boxes(frame, last_boxes) if last_boxes else frame
                     writer.write(annotated)
 
-                if not is_file:
-                    annotated = detector.draw_boxes(frame, last_boxes) if last_boxes else frame
-                    frame_bytes = encode_image_to_jpeg(annotated)
-                    if frame_bytes:
-                        state.last_frame = frame_bytes
-                        state.last_frame_id += 1
+                frame_bytes = encode_image_to_jpeg(annotated)
+                if frame_bytes:
+                    state.last_frame = frame_bytes
+                    state.last_frame_id += 1
 
                 if do_detect:
                     payload = {
@@ -215,6 +216,11 @@ class JobManager:
                         "done": False,
                     }
                     self._schedule_broadcast(job_id, payload)
+                if is_file and frame_duration > 0:
+                    expected_time = start_time + frame_index * frame_duration
+                    delay = expected_time - time.time()
+                    if delay > 0:
+                        time.sleep(delay)
         except Exception as exc:
             state.status = "error"
             state.error = str(exc)
