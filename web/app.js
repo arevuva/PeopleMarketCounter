@@ -5,6 +5,8 @@ const streamInput = document.getElementById("streamInput");
 const startButton = document.getElementById("startButton");
 const historyList = document.getElementById("historyList");
 const historyEmpty = document.getElementById("historyEmpty");
+const streamLogList = document.getElementById("streamLogList");
+const streamLogEmpty = document.getElementById("streamLogEmpty");
 const fpsInput = document.getElementById("fpsInput");
 const maxSecondsInput = document.getElementById("maxSecondsInput");
 const confInput = document.getElementById("confInput");
@@ -250,7 +252,6 @@ async function processVideo(file) {
 
 async function processStream(url) {
   setStatus("processing", "stream");
-  const streamWindow = window.open("", "_blank");
   const els = getResultEls("stream");
   try {
     const response = await fetch("/api/process/stream", {
@@ -268,16 +269,10 @@ async function processStream(url) {
     const result = await response.json();
     startSocket(result.job_id, "stream");
     setStreamPreview(result.job_id, "stream");
-    if (streamWindow) {
-      streamWindow.location = `/api/job/${result.job_id}/mjpeg`;
-    }
   } catch (error) {
     setStatus("error", "stream");
     if (els?.errorEl) {
       els.errorEl.textContent = error.message || "Не удалось обработать поток";
-    }
-    if (streamWindow) {
-      streamWindow.close();
     }
   }
 }
@@ -314,6 +309,7 @@ function setActiveTab(tabName) {
   updateButtonState();
   if (activeTab === "history") {
     loadHistory();
+    loadStreamLog();
   }
   if (controlsPanel) {
     controlsPanel.style.display = activeTab === "history" ? "none" : "";
@@ -403,6 +399,48 @@ async function loadHistory() {
     if (historyEmpty) {
       historyEmpty.textContent = "Не удалось загрузить историю";
       historyEmpty.style.display = "block";
+    }
+  }
+}
+
+async function loadStreamLog() {
+  if (!streamLogList) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/stream-log");
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+    const items = await response.json();
+    if (!items || items.length === 0) {
+      streamLogList.innerHTML = "";
+      if (streamLogEmpty) {
+        streamLogEmpty.textContent = "Нет данных по потоку";
+        streamLogEmpty.style.display = "block";
+      }
+      return;
+    }
+    streamLogList.innerHTML = "";
+    if (streamLogEmpty) {
+      streamLogEmpty.style.display = "none";
+    }
+    items.forEach((item) => {
+      const timestamp = item.timestamp || "—";
+      const count =
+        item.count !== null && item.count !== undefined ? item.count : "—";
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${timestamp}</td>
+        <td>${count}</td>
+      `;
+      streamLogList.appendChild(row);
+    });
+  } catch (error) {
+    streamLogList.innerHTML = "";
+    if (streamLogEmpty) {
+      streamLogEmpty.textContent = "Не удалось загрузить журнал потока";
+      streamLogEmpty.style.display = "block";
     }
   }
 }

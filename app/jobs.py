@@ -12,6 +12,7 @@ from fastapi import WebSocket
 
 from app.detector import detector, encode_image_to_jpeg
 from app.history import append_history
+from app.stream_log import append_stream_log
 
 
 @dataclass
@@ -38,6 +39,7 @@ class JobManager:
         self.jobs: Dict[str, JobState] = {}
         self.websockets: Dict[str, Set[WebSocket]] = {}
         self.loop: Optional[asyncio.AbstractEventLoop] = None
+        self.active_stream_job_id: Optional[str] = None
 
     def set_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self.loop = loop
@@ -97,6 +99,7 @@ class JobManager:
         fps: float = 5.0,
         max_seconds: int = 0,
     ) -> None:
+        self.active_stream_job_id = job_id
         thread = threading.Thread(
             target=self._process_capture,
             args=(job_id, stream_url, fps, max_seconds, False),
@@ -137,6 +140,7 @@ class JobManager:
 
         start_time = time.time()
         last_emit = 0.0
+        last_sample = start_time
         frame_index = 0
         interval = 1.0 / fps if fps > 0 else 0.0
         writer = None
@@ -178,6 +182,9 @@ class JobManager:
 
         try:
             while True:
+                if not is_file and self.active_stream_job_id != job_id:
+                    state.status = "done"
+                    break
                 if max_seconds and (time.time() - start_time) > max_seconds:
                     break
                 success, frame = cap.read()
@@ -216,6 +223,18 @@ class JobManager:
                         "done": False,
                     }
                     self._schedule_broadcast(job_id, payload)
+                if (
+                    not is_file
+                    and self.active_stream_job_id == job_id
+                    and (now - last_sample) >= 10.0
+                ):
+                    append_stream_log(
+                        {
+                            "job_id": job_id,
+                            "count": last_count,
+                        }
+                    )
+                    last_sample = now
                 if is_file and frame_duration > 0:
                     expected_time = start_time + frame_index * frame_duration
                     delay = expected_time - time.time()
@@ -241,6 +260,8 @@ class JobManager:
                     os.remove(source)
                 except OSError:
                     pass
+            if not is_file and self.active_stream_job_id == job_id:
+                self.active_stream_job_id = None
 
         state.status = "done" if state.status != "error" else state.status
         if is_file and state.source_type == "video" and state.status == "done":

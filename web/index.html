@@ -17,9 +17,7 @@
         <div class="tab-list" role="tablist" aria-label="Режим распознавания">
           <button class="tab active" role="tab" data-tab="image">Изображение</button>
           <button class="tab" role="tab" data-tab="video">Видео</button>
-          <button class="tab disabled" role="tab" data-tab="stream" disabled aria-disabled="true">
-            Поток
-          </button>
+          <button class="tab" role="tab" data-tab="stream">Поток</button>
           <button class="tab" role="tab" data-tab="history">История</button>
         </div>
 
@@ -118,6 +116,19 @@
                 </tr>
               </thead>
               <tbody id="historyList"></tbody>
+            </table>
+          </div>
+          <h3 class="history-title">Журнал потока</h3>
+          <div id="streamLogEmpty" class="history-empty">Нет данных по потоку</div>
+          <div class="history-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Время</th>
+                  <th>Количество людей</th>
+                </tr>
+              </thead>
+              <tbody id="streamLogList"></tbody>
             </table>
           </div>
         </div>

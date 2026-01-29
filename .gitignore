@@ -1,1 +1,7 @@
 frames
+app/__pycache__/__init__.cpython-310.pyc
+app/__pycache__/detector.cpython-310.pyc
+app/__pycache__/history.cpython-310.pyc
+app/__pycache__/jobs.cpython-310.pyc
+app/__pycache__/main.cpython-310.pyc
+app/__pycache__/stream_log.cpython-310.pyc

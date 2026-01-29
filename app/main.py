@@ -16,8 +16,10 @@ import yt_dlp
 from app.detector import decode_image_bytes, detector, encode_image_to_jpeg
 from app.history import append_history, export_history_xlsx, list_history
 from app.jobs import job_manager, save_upload_to_tempfile
+from app.stream_log import list_stream_log
 
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
+STREAM_LOG_LIMIT = 200
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -69,6 +71,8 @@ def _get_video_duration(file_path: str) -> Optional[float]:
     if fps <= 0:
         return None
     return round(frames / fps, 2)
+
+
 
 
 @app.on_event("startup")
@@ -194,6 +198,16 @@ async def get_job(job_id: str) -> JSONResponse:
 @app.get("/api/history")
 async def get_history() -> JSONResponse:
     return JSONResponse(list_history())
+
+
+@app.get("/api/stream-log")
+async def get_stream_log(
+    limit: conint(ge=1, le=1000) = STREAM_LOG_LIMIT,
+) -> JSONResponse:
+    items = list_stream_log()
+    if limit and len(items) > limit:
+        items = items[-int(limit) :]
+    return JSONResponse(items)
 
 
 @app.get("/api/history/excel")
