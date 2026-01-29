@@ -2,7 +2,10 @@ import json
 import os
 import threading
 import time
+from io import BytesIO
 from typing import List
+
+from openpyxl import Workbook
 
 HISTORY_PATH = os.path.join("data", "history.json")
 _lock = threading.Lock()
@@ -40,3 +43,25 @@ def append_history(entry: dict, limit: int = 500) -> None:
             data = data[-limit:]
         with open(HISTORY_PATH, "w", encoding="utf-8") as handle:
             json.dump(data, handle, ensure_ascii=False, indent=2)
+
+
+def export_history_xlsx() -> bytes:
+    data = list_history()
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "History"
+    headers = ["Тип", "Файл", "Длительность, сек", "Количество людей", "Время"]
+    sheet.append(headers)
+    for item in data:
+        sheet.append(
+            [
+                item.get("type") or "",
+                item.get("filename") or "",
+                item.get("duration_seconds") if item.get("duration_seconds") is not None else "",
+                item.get("count") if item.get("count") is not None else "",
+                item.get("timestamp") or "",
+            ]
+        )
+    output = BytesIO()
+    workbook.save(output)
+    return output.getvalue()

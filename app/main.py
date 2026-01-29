@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from io import BytesIO
 import time
 from typing import Optional
 
@@ -13,7 +14,7 @@ import cv2
 import yt_dlp
 
 from app.detector import decode_image_bytes, detector, encode_image_to_jpeg
-from app.history import append_history, list_history
+from app.history import append_history, export_history_xlsx, list_history
 from app.jobs import job_manager, save_upload_to_tempfile
 
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
@@ -193,6 +194,18 @@ async def get_job(job_id: str) -> JSONResponse:
 @app.get("/api/history")
 async def get_history() -> JSONResponse:
     return JSONResponse(list_history())
+
+
+@app.get("/api/history/excel")
+async def get_history_excel() -> StreamingResponse:
+    content = export_history_xlsx()
+    filename = "history.xlsx"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(
+        BytesIO(content),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers,
+    )
 
 
 @app.get("/api/job/{job_id}/video")

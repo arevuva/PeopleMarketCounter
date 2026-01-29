@@ -82,5 +82,19 @@
     "duration_seconds": 10.52,
     "count": 12,
     "timestamp": "2026-01-29 01:13:48"
+  },
+  {
+    "type": "image",
+    "filename": "seq_000005.jpg",
+    "duration_seconds": null,
+    "count": 18,
+    "timestamp": "2026-01-29 10:19:07"
+  },
+  {
+    "type": "video",
+    "filename": "clothes.MP4",
+    "duration_seconds": 10.52,
+    "count": 12,
+    "timestamp": "2026-01-29 10:19:44"
   }
 ]
